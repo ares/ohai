@@ -21,18 +21,36 @@ provides "lsb"
 lsb Mash.new
 
 begin
-  File.open("/etc/lsb-release").each do |line|
-    case line
-    when /^DISTRIB_ID=(.+)$/
-      lsb[:id] = $1
-    when /^DISTRIB_RELEASE=(.+)$/
-      lsb[:release] = $1
-    when /^DISTRIB_CODENAME=(.+)$/
-      lsb[:codename] = $1
-    when /^DISTRIB_DESCRIPTION=(.+)$/
-      lsb[:description] = $1
+  if system("which lsb_release > /dev/null 2>&1")
+    `lsb_release -a 2>/dev/null`.split("\n").each do |line|
+      key, value = line.split("\t")
+      case key
+      when 'Distributor ID:' then
+        lsb[:id] = value
+      when 'Description:' then
+        lsb[:description] = value
+      when 'Release:' then
+        lsb[:release] = value
+      when 'Codename:' then
+        lsb[:codename] = value
+      end
     end
+  elsif File.exists?("/etc/lsb-release")
+    File.open("/etc/lsb-release").each do |line|
+      case line
+      when /^DISTRIB_ID=(.+)$/
+        lsb[:id] = $1
+      when /^DISTRIB_RELEASE=(.+)$/
+        lsb[:release] = $1
+      when /^DISTRIB_CODENAME=(.+)$/
+        lsb[:codename] = $1
+      when /^DISTRIB_DESCRIPTION=(.+)$/
+        lsb[:description] = $1
+      end
+    end
+  else
+    Ohai::Log.debug("Skipping LSB, lsb_release and /etc/lsb-release missing")
   end
 rescue
-  Ohai::Log.debug("Skipping LSB, cannot find /etc/lsb-release")
+  Ohai::Log.debug("Skipping LSB, exception catched")
 end
